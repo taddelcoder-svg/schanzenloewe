@@ -1,0 +1,10 @@
+# Render-Blueprint: ein Docker-Webdienst. Das Passwort sollte dasselbe sein wie bei den anderen Spielen.
+services:
+  - type: web
+    name: schanzenloewe
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: ZUGANG_PASSWORT
+        sync: false

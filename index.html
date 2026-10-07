@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#14213d">
+<title>Schanzenlöwe</title>
+<style>
+:root{
+  --nacht:#14213d; --nacht2:#1d2f55; --karte:#243b6b; --licht:#f4f7ff; --gedimmt:#a9b8d8;
+  --orange:#ff8a1f; --orange2:#ffb347; --gold:#ffc928; --gruen:#3ecf6e; --rot:#ff4d4d;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px); --safe-l:env(safe-area-inset-left,0px); --safe-r:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--nacht);color:var(--licht);
+  font-family:"Trebuchet MS","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;color:inherit;cursor:pointer;border:0}
+.knopf{background:linear-gradient(#ffa23a,#ff7a00);color:#fff;font-weight:800;font-size:1.05rem;letter-spacing:.02em;padding:.8em 1.4em;border-radius:14px;
+  box-shadow:0 4px 0 #b34f00,0 8px 18px rgba(0,0,0,.35);text-shadow:0 1px 0 rgba(0,0,0,.25);transition:transform .08s}
+.knopf:active{transform:translateY(3px);box-shadow:0 1px 0 #b34f00,0 4px 10px rgba(0,0,0,.35)}
+.knopf.zweit{background:linear-gradient(#4a6cb3,#375391);box-shadow:0 4px 0 #1f3258,0 8px 18px rgba(0,0,0,.35)}
+.knopf.zweit:active{box-shadow:0 1px 0 #1f3258,0 4px 10px rgba(0,0,0,.35)}
+.knopf.gruen{background:linear-gradient(#4fe085,#27b957);box-shadow:0 4px 0 #17803b,0 8px 18px rgba(0,0,0,.35)}
+.knopf:disabled{filter:grayscale(.8) brightness(.8);cursor:default}
+.klein{font-size:.9rem;padding:.55em 1em;border-radius:11px}
+
+/* Bildschirme */
+.schirm{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;padding:calc(18px + var(--safe-t)) calc(18px + var(--safe-r)) calc(18px + var(--safe-b)) calc(18px + var(--safe-l));
+  background:radial-gradient(ellipse at 50% 30%,rgba(20,33,61,.55),rgba(10,16,34,.88));z-index:20;overflow:auto;touch-action:pan-y;scrollbar-width:none}
+.schirm.an{display:flex}
+.titel{margin:0;font-size:clamp(2.2rem,8vw,4.6rem);line-height:.95;text-align:center;font-weight:900;letter-spacing:.01em;
+  background:linear-gradient(#ffe08a,#ff9a1f 60%,#e4560a);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 0 rgba(120,40,0,.55)) drop-shadow(0 10px 20px rgba(0,0,0,.5))}
+.untertitel{margin:0;color:var(--gedimmt);text-align:center;font-size:clamp(.9rem,2.4vw,1.1rem)}
+.menue{display:flex;flex-direction:column;gap:12px;width:min(320px,86vw)}
+.reihe{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.muenzzaehler{display:inline-flex;align-items:center;gap:.4em;font-weight:800;color:var(--gold);background:rgba(0,0,0,.35);padding:.35em .8em;border-radius:999px}
+.muenze{display:inline-block;width:1.05em;height:1.05em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#ffc928 55%,#d99a00);box-shadow:inset 0 0 0 .13em #e6a800}
+.hinweis{color:var(--gedimmt);font-size:.82rem;text-align:center;max-width:46ch;line-height:1.4}
+.hinweis a{color:var(--orange2)}
+h2{margin:0;font-size:1.7rem}
+
+/* Level-Auswahl */
+.kopfzeile{display:flex;width:min(900px,100%);align-items:center;justify-content:space-between;gap:10px}
+.welten{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.welt{background:var(--karte);padding:.55em 1.1em;border-radius:999px;font-weight:700;opacity:.65}
+.welt.aktiv{opacity:1;background:var(--orange);color:#fff;box-shadow:0 3px 0 #b34f00}
+.raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;width:min(900px,100%)}
+.lvl{position:relative;background:linear-gradient(#2d4a85,#243b6b);border-radius:16px;padding:12px 12px 10px;text-align:left;box-shadow:0 4px 0 #14254a,0 8px 16px rgba(0,0,0,.3);min-height:112px;display:flex;flex-direction:column;justify-content:space-between}
+.lvl:active:not(.zu){transform:translateY(2px)}
+.lvl .nr{font-size:.8rem;color:var(--gedimmt);font-weight:700}
+.lvl .name{font-size:1.1rem;font-weight:800;line-height:1.1}
+.lvl .sterne{font-size:1.25rem;letter-spacing:.1em;color:#5f78ad}
+.lvl .sterne b{color:var(--gold);font-weight:400;text-shadow:0 0 8px rgba(255,201,40,.6)}
+.lvl .zeit{font-size:.75rem;color:var(--gedimmt)}
+.lvl.zu{opacity:.5;filter:grayscale(.7)}
+.lvl.zu::after{content:"🔒";position:absolute;right:10px;top:8px;font-size:1.2rem}
+
+/* Garage */
+.garage{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;width:min(980px,100%)}
+.moto{background:linear-gradient(#2d4a85,#243b6b);border-radius:18px;padding:12px;width:min(300px,100%);display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 0 #14254a,0 8px 16px rgba(0,0,0,.3);border:3px solid transparent}
+.moto.gewaehlt{border-color:var(--orange)}
+.moto canvas{width:100%;height:110px;background:linear-gradient(#8fd0ff,#e1f3ff);border-radius:12px}
+.moto h3{margin:0;font-size:1.25rem}
+.moto p{margin:0;font-size:.82rem;color:var(--gedimmt);min-height:2.4em}
+.balken{display:grid;grid-template-columns:62px 1fr;gap:4px 8px;align-items:center;font-size:.76rem;color:var(--gedimmt)}
+.balken i{display:block;height:7px;border-radius:4px;background:rgba(0,0,0,.35);overflow:hidden}
+.balken i span{display:block;height:100%;background:linear-gradient(90deg,var(--orange2),var(--orange));border-radius:4px}
+
+/* Spiel-HUD */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none}
+#hud.an{display:block}
+#oben{position:absolute;left:calc(12px + var(--safe-l));right:calc(12px + var(--safe-r));top:calc(10px + var(--safe-t));display:flex;gap:10px;align-items:center}
+#oben .box{background:rgba(10,18,40,.55);backdrop-filter:blur(3px);padding:.35em .8em;border-radius:12px;font-weight:800;font-size:1.05rem;white-space:nowrap}
+#fortschritt{flex:1;height:12px;background:rgba(10,18,40,.55);border-radius:8px;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+#fortschritt i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--orange2),var(--orange));border-radius:8px}
+#pauseKnopf{pointer-events:auto;width:44px;height:44px;border-radius:12px;background:rgba(10,18,40,.6);font-size:1.2rem;font-weight:900}
+#meldungen{position:absolute;left:0;right:0;top:22%;display:flex;flex-direction:column;align-items:center;gap:6px}
+.meldung{font-size:clamp(1.5rem,5.5vw,2.8rem);font-weight:900;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.4),0 0 18px rgba(255,138,31,.9);animation:hoch 1.3s ease-out forwards;white-space:nowrap}
+.meldung.klein{font-size:clamp(1rem,3.4vw,1.5rem);text-shadow:0 2px 0 rgba(0,0,0,.4)}
+@keyframes hoch{0%{opacity:0;transform:translateY(14px) scale(.7)}12%{opacity:1;transform:translateY(0) scale(1.12)}25%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-34px)}}
+#tipp{position:absolute;left:0;right:0;bottom:calc(18% + var(--safe-b));text-align:center;font-weight:800;font-size:clamp(1rem,3vw,1.4rem);color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6);animation:puls 1.2s ease-in-out infinite}
+@keyframes puls{50%{opacity:.55}}
+
+/* Touch-Tasten */
+#touch{position:absolute;inset:auto 0 0 0;height:34%;display:none;pointer-events:none}
+#touch.an{display:block}
+.tt{position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;
+  background:rgba(10,18,40,.5);border:3px solid rgba(255,255,255,.35);border-radius:22px;backdrop-filter:blur(2px);text-shadow:0 2px 0 rgba(0,0,0,.4)}
+.tt.druck{background:rgba(255,138,31,.75);border-color:#fff}
+#tGas{right:calc(14px + var(--safe-r));bottom:calc(14px + var(--safe-b));width:clamp(96px,22vw,150px);height:clamp(96px,22vw,150px);font-size:1.3rem}
+#tBremse{right:calc(clamp(96px,22vw,150px) + 28px + var(--safe-r));bottom:calc(14px + var(--safe-b));width:clamp(70px,16vw,110px);height:clamp(70px,16vw,110px);font-size:.95rem}
+#tHoch{left:calc(14px + var(--safe-l));bottom:calc(14px + var(--safe-b));width:clamp(84px,19vw,130px);height:clamp(84px,19vw,130px);font-size:2rem}
+#tRunter{left:calc(clamp(84px,19vw,130px) + 28px + var(--safe-l));bottom:calc(14px + var(--safe-b));width:clamp(84px,19vw,130px);height:clamp(84px,19vw,130px);font-size:2rem}
+
+/* Ergebnis */
+.ergebnis{background:linear-gradient(#2d4a85,#1d3260);border-radius:22px;padding:20px 24px;display:flex;flex-direction:column;gap:12px;align-items:center;min-width:min(360px,90vw);box-shadow:0 8px 0 #0f1c3a,0 20px 40px rgba(0,0,0,.5)}
+.ergebnis h2{font-size:2.2rem;color:var(--gold);text-shadow:0 3px 0 rgba(0,0,0,.35)}
+.ergebnis h2.rot{color:var(--rot)}
+.ziele{display:flex;flex-direction:column;gap:6px;width:100%}
+.ziel{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);padding:.5em .8em;border-radius:12px;font-weight:700}
+.ziel .st{font-size:1.4rem;color:#5f78ad}
+.ziel.ok .st{color:var(--gold);text-shadow:0 0 10px rgba(255,201,40,.7)}
+.ziel span.r{margin-left:auto;color:var(--gedimmt);font-size:.85rem;font-weight:600}
+.grosswert{font-size:2.6rem;font-weight:900;color:var(--licht)}
+@media (pointer:coarse){.tastatur{display:none}}
+@media (max-height:520px){.titel{font-size:2.2rem}.titel br{display:none}.untertitel{display:none}.menue{gap:8px}.tastatur{display:none}.knopf{padding:.6em 1.2em}.schirm{gap:8px}.ergebnis{padding:12px 18px;gap:8px}.ergebnis h2{font-size:1.6rem}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div id="oben">
+    <div class="box"><span class="muenze"></span> <span id="hMuenzen">0</span></div>
+    <div id="fortschritt"><i></i></div>
+    <div class="box" id="hInfo">0.0 s</div>
+    <button id="pauseKnopf" aria-label="Pause">II</button>
+  </div>
+  <div id="meldungen"></div>
+  <div id="tipp"></div>
+  <div id="touch">
+    <div class="tt" id="tHoch" data-t="hoch">⟲</div>
+    <div class="tt" id="tRunter" data-t="runter">⟳</div>
+    <div class="tt" id="tBremse" data-t="bremse">BREMSE</div>
+    <div class="tt" id="tGas" data-t="gas">GAS</div>
+  </div>
+</div>
+
+<div class="schirm an" id="sStart">
+  <h1 class="titel">SCHANZEN<br>LÖWE</h1>
+  <p class="untertitel">Hügel, Schanzen, Flips. Bring den Löwen heil ins Ziel!</p>
+  <div class="menue">
+    <button class="knopf" id="bSpielen">▶ Spielen</button>
+    <button class="knopf zweit" id="bEndlos">∞ Endlos-Fahrt</button>
+    <button class="knopf zweit" id="bGarage">🏍 Garage</button>
+  </div>
+  <div class="welten" id="stufen" title="Schwierigkeit"></div>
+  <div class="muenzzaehler"><span class="muenze"></span> <span id="sMuenzen">0</span></div>
+  <p class="hinweis tastatur"><b>Tastatur:</b> ↑/W Gas · ↓/S Bremse · ←/A Nase hoch · →/D Nase runter · R Neustart · C ab Checkpoint · Esc Pause<br>Dreh dich in der Luft für Flips, aber lande auf den Rädern!</p>
+  <p class="hinweis"><a href="/datenschutz">Datenschutz</a> · Ein privates Hobbyspiel von Matteo</p>
+</div>
+
+<div class="schirm" id="sLevels">
+  <div class="kopfzeile">
+    <button class="knopf zweit klein" data-zurueck>← Zurück</button>
+    <h2>Level wählen</h2>
+    <div class="muenzzaehler"><span class="muenze"></span> <span class="mz">0</span></div>
+  </div>
+  <div class="welten" id="welten"></div>
+  <div class="raster" id="raster"></div>
+</div>
+
+<div class="schirm" id="sGarage">
+  <div class="kopfzeile">
+    <button class="knopf zweit klein" data-zurueck>← Zurück</button>
+    <h2>Garage</h2>
+    <div class="muenzzaehler"><span class="muenze"></span> <span class="mz">0</span></div>
+  </div>
+  <div class="garage" id="garage"></div>
+</div>
+
+<div class="schirm" id="sPause">
+  <div class="ergebnis">
+    <h2 style="color:var(--licht)">Pause</h2>
+    <div class="menue">
+      <button class="knopf" id="pWeiter">▶ Weiter</button>
+      <button class="knopf zweit" id="pNeu">↻ Neustart</button>
+      <button class="knopf zweit" id="pMenue">☰ Menü</button>
+    </div>
+  </div>
+</div>
+
+<div class="schirm" id="sCrash">
+  <div class="ergebnis">
+    <h2 class="rot" id="cTitel">Abgestürzt!</h2>
+    <div id="cText" class="hinweis" style="font-size:1rem"></div>
+    <div class="menue">
+      <button class="knopf gruen" id="cCheck">⚑ Ab Checkpoint (C)</button>
+      <button class="knopf" id="cNeu">↻ Neustart (R)</button>
+      <button class="knopf zweit" id="cMenue">☰ Menü</button>
+    </div>
+  </div>
+</div>
+
+<div class="schirm" id="sZiel">
+  <div class="ergebnis">
+    <h2>Geschafft!</h2>
+    <div class="ziele" id="zZiele"></div>
+    <div class="muenzzaehler" id="zBonus"></div>
+    <div class="hinweis" id="zZeit"></div>
+    <div class="menue">
+      <button class="knopf gruen" id="zWeiter">Nächstes Level ▶</button>
+      <button class="knopf" id="zNeu">↻ Nochmal</button>
+      <button class="knopf zweit" id="zMenue">☰ Level</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/logik.js"></script>
+<script src="/js/spiel.js"></script>
+</body>
+</html>
