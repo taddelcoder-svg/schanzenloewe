@@ -104,6 +104,38 @@ h2{margin:0;font-size:1.7rem}
 .ziel.ok .st{color:var(--gold);text-shadow:0 0 10px rgba(255,201,40,.7)}
 .ziel span.r{margin-left:auto;color:var(--gedimmt);font-size:.85rem;font-weight:600}
 .grosswert{font-size:2.6rem;font-weight:900;color:var(--licht)}
+/* Kombo-Anzeige */
+#kombo{position:absolute;left:50%;top:calc(58px + var(--safe-t));transform:translateX(-50%);font-weight:900;font-size:clamp(1.1rem,3.6vw,1.6rem);color:#fff;
+  text-shadow:0 2px 0 rgba(0,0,0,.4),0 0 14px rgba(255,138,31,.9);white-space:nowrap;--rest:0}
+#kombo:not(:empty)::after{content:"";display:block;height:4px;margin-top:3px;border-radius:2px;background:var(--orange2);width:calc(var(--rest) * 100%)}
+
+/* Dialog */
+.dialog{background:linear-gradient(#2d4a85,#1d3260);border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;width:min(520px,94vw);box-shadow:0 8px 0 #0f1c3a,0 20px 40px rgba(0,0,0,.5)}
+.dialog h2{font-size:1.6rem;color:var(--gold)}
+.dialog textarea{width:100%;min-height:92px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:var(--licht);font:600 .85rem/1.35 ui-monospace,Menlo,Consolas,monospace;padding:10px;resize:vertical;word-break:break-all;user-select:text;-webkit-user-select:text}
+.fehler{color:#ff9a8a;font-weight:700;min-height:1em}
+
+/* Editor */
+.editor{display:flex;flex-direction:column;gap:10px;width:min(980px,100%)}
+.edzeile{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
+.edzeile input{font:inherit;font-weight:700;padding:.5em .8em;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:var(--licht);min-width:0;flex:1 1 180px;user-select:text;-webkit-user-select:text}
+#eVorschau{width:100%;height:140px;border-radius:14px;box-shadow:0 0 0 2px rgba(255,255,255,.15);cursor:pointer}
+.teilliste{display:flex;gap:6px;flex-wrap:wrap}
+.teil{background:var(--karte);padding:.4em .75em;border-radius:10px;font-weight:700;font-size:.9rem}
+.teil small{color:var(--gedimmt);font-weight:600}
+.teil.aktiv{background:var(--orange);color:#fff;box-shadow:0 3px 0 #b34f00}
+.teil.aktiv small{color:#ffe6c9}
+.teilwerte{background:rgba(0,0,0,.25);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.regler{display:grid;grid-template-columns:82px 1fr 92px;gap:10px;align-items:center;font-size:.9rem}
+.regler input{width:100%;accent-color:var(--orange)}
+.regler em{font-style:normal;font-weight:800;text-align:right}
+.palette{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.palette .knopf{box-shadow:0 3px 0 #b34f00}
+.eigene{display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.25);border-radius:12px;padding:8px 10px}
+.eigene>div{flex:1;min-width:0}
+.eigene small{display:block;color:var(--gedimmt);font-size:.78rem}
+.editor h3{margin:6px 0 0}
+#sStart .menue small{font-weight:600;opacity:.85}
 @media (pointer:coarse){.tastatur{display:none}}
 @media (max-height:520px){.titel{font-size:2.2rem}.titel br{display:none}.untertitel{display:none}.menue{gap:8px}.tastatur{display:none}.knopf{padding:.6em 1.2em}.schirm{gap:8px}.ergebnis{padding:12px 18px;gap:8px}.ergebnis h2{font-size:1.6rem}}
 </style>
@@ -114,10 +146,12 @@ h2{margin:0;font-size:1.7rem}
 <div id="hud">
   <div id="oben">
     <div class="box"><span class="muenze"></span> <span id="hMuenzen">0</span></div>
+    <div class="box" id="hPunkte">0 P</div>
     <div id="fortschritt"><i></i></div>
     <div class="box" id="hInfo">0.0 s</div>
     <button id="pauseKnopf" aria-label="Pause">II</button>
   </div>
+  <div id="kombo"></div>
   <div id="meldungen"></div>
   <div id="tipp"></div>
   <div id="touch">
@@ -133,12 +167,17 @@ h2{margin:0;font-size:1.7rem}
   <p class="untertitel">Hügel, Schanzen, Flips. Bring den Löwen heil ins Ziel!</p>
   <div class="menue">
     <button class="knopf" id="bSpielen">▶ Spielen</button>
+    <button class="knopf gruen" id="bTages">📅 Tagesstrecke</button>
     <button class="knopf zweit" id="bEndlos">∞ Endlos-Fahrt</button>
+    <div class="reihe" style="flex-wrap:nowrap">
+      <button class="knopf zweit" id="bEditor" style="flex:1">🛠 Editor</button>
+      <button class="knopf zweit" id="bCode" style="flex:1">👻 Code</button>
+    </div>
     <button class="knopf zweit" id="bGarage">🏍 Garage</button>
   </div>
   <div class="welten" id="stufen" title="Schwierigkeit"></div>
   <div class="muenzzaehler"><span class="muenze"></span> <span id="sMuenzen">0</span></div>
-  <p class="hinweis tastatur"><b>Tastatur:</b> ↑/W Gas · ↓/S Bremse · ←/A Nase hoch · →/D Nase runter · R Neustart · C ab Checkpoint · Esc Pause<br>Dreh dich in der Luft für Flips, aber lande auf den Rädern!</p>
+  <p class="hinweis tastatur"><b>Tastatur:</b> ↑/W Gas · ↓/S Bremse · ←/A Nase hoch · →/D Nase runter · R Neustart · C ab Checkpoint · Esc Pause<br>Dreh dich in der Luft für Flips, aber lande auf den Rädern! Tricks hintereinander geben eine Kombo.</p>
   <p class="hinweis"><a href="/datenschutz">Datenschutz</a> · Ein privates Hobbyspiel von Matteo</p>
 </div>
 
@@ -193,8 +232,44 @@ h2{margin:0;font-size:1.7rem}
     <div class="menue">
       <button class="knopf gruen" id="zWeiter">Nächstes Level ▶</button>
       <button class="knopf" id="zNeu">↻ Nochmal</button>
+      <button class="knopf zweit" id="zGhost">👻 Ghost teilen</button>
       <button class="knopf zweit" id="zMenue">☰ Level</button>
     </div>
+  </div>
+</div>
+
+<div class="schirm" id="sEditor">
+  <div class="editor">
+    <div class="kopfzeile">
+      <button class="knopf zweit klein" data-zurueck>← Zurück</button>
+      <h2>Level-Editor</h2>
+      <button class="knopf zweit klein" id="eNeu">Neu</button>
+    </div>
+    <div class="edzeile"><input id="eName" maxlength="24" placeholder="Name der Strecke"><span class="hinweis" id="eLaenge"></span></div>
+    <div class="welten" id="eWelten"></div>
+    <canvas id="eVorschau"></canvas>
+    <div class="teilliste" id="eTeile"></div>
+    <div class="teilwerte" id="eWerte"></div>
+    <div class="palette" id="ePalette"></div>
+    <div class="reihe">
+      <button class="knopf gruen" id="eTest">▶ Testfahrt</button>
+      <button class="knopf zweit" id="ePruefen">✔ Prüfen</button>
+      <button class="knopf zweit" id="eTeilen">🔗 Teilen</button>
+      <button class="knopf zweit" id="eSpeichern">💾 Speichern</button>
+    </div>
+    <div class="hinweis" id="eMeldung" style="max-width:none"></div>
+    <h3>Meine Strecken</h3>
+    <div id="eListe" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<div class="schirm" id="sDialog">
+  <div class="dialog">
+    <h2 id="dTitel"></h2>
+    <div class="hinweis" id="dText" style="max-width:none;text-align:left;font-size:.92rem"></div>
+    <textarea id="dFeld" spellcheck="false" autocomplete="off"></textarea>
+    <div class="fehler" id="dFehler"></div>
+    <div class="reihe" id="dKnoepfe"></div>
   </div>
 </div>
 
