@@ -974,6 +974,18 @@ function tagesStrecke(datum) {
   return Object.assign(def, { id: 'tag', key: 't:' + datum, eigen: false, tages: true, datum, flips: 2 });
 }
 
+// ---------------------------------------------------------------- Olympiade: eine Strecke fuer alle
+// Aus der Lauf-Kennung der Olympiade wird (wie beim Datum der Tagesstrecke) eine feste Strecke; Browser und Server bauen dieselbe.
+function olympDatum(kennung) {
+  let h = 2166136261;
+  for (const ch of String(kennung)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  return 30000000 + h % 60000000;
+}
+function olympLevel(kennung) {
+  const d = olympDatum(kennung);
+  return Object.assign(tagesStrecke(d), { id: 'olymp', key: 'o:' + d, tages: false, olymp: true, name: 'Olympia-Strecke' });
+}
+
 // ---------------------------------------------------------------- Ghosts: Fahrten aufzeichnen und als Code teilen
 // Proben mit 5 Hz: [x, y, th]. Kodiert werden x/y als zweite Differenz (5 cm), der Winkel als erste Differenz (1/40 rad).
 const GHOST_HZ = 5;
@@ -1047,5 +1059,5 @@ for (const l of LEVELS) l.key = 'l:' + l.id;
 
 return { Lauf, Gelaende, Bauer, LEVELS, WELTEN, MOTOS, ENDLOS, KOPF, BRUST, RAD_X, ACHSE, rng, autopilot, simuliere, G, DT, SUB, klemme,
   VARIANTEN, fahrbar, TEILE, TEIL, MAX_TEILE, teilWert, streckeZuCode, codeZuStrecke, eigenesLevel, tagesStrecke,
-  GHOST_HZ, ghostBytes, ghostAusBytes, ghostLage, zuB64, ausB64, levelZuKey };
+  GHOST_HZ, ghostBytes, ghostAusBytes, ghostLage, zuB64, ausB64, levelZuKey, olympDatum, olympLevel };
 });
