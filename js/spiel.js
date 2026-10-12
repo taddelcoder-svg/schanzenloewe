@@ -71,8 +71,8 @@ window.addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (modus === 'spiel' || modus === 'pause') {
     if (e.code === 'Escape' || e.code === 'KeyP') pausiere(modus === 'spiel');
-    else if (e.code === 'KeyR') neustart();
-    else if (e.code === 'KeyC') vomCheckpoint();
+    else if (e.code === 'KeyR' && !olympia) neustart();
+    else if (e.code === 'KeyC' && !olympia) vomCheckpoint();
   }
 });
 window.addEventListener('keyup', e => { tasten[e.code] = false; });
@@ -97,7 +97,7 @@ function eingabe() {
 }
 
 // ---------------------------------------------------------------- Menues
-const SCHIRME = ['sStart', 'sLevels', 'sGarage', 'sPause', 'sCrash', 'sZiel', 'sEditor', 'sDialog'];
+const SCHIRME = ['sStart', 'sLevels', 'sGarage', 'sPause', 'sCrash', 'sZiel', 'sEditor', 'sDialog', 'sOlymp'];
 function zeige(id) { for (const s of SCHIRME) $(s).classList.toggle('an', s === id); }
 function hud(an) { $('hud').classList.toggle('an', an); $('touch').classList.toggle('an', an && touchGenutzt); }
 function aktualisiereMuenzen() { $('sMuenzen').textContent = save.muenzen; document.querySelectorAll('.mz').forEach(e => { e.textContent = save.muenzen; }); aktualisiereTagesKnopf(); }
@@ -259,7 +259,7 @@ function starteLevel(id) {
 function starteDef(d, opt) {
   opt = opt || {};
   def = d;
-  lauf = new L.Lauf(def, aktMoto(), def.endlos ? (Date.now() & 0xffffff) : undefined, save.schwer);
+  lauf = new L.Lauf(def, opt.moto || aktMoto(), def.endlos ? (Date.now() & 0xffffff) : undefined, opt.schwer !== undefined ? opt.schwer : save.schwer);
   theme = THEMEN[def.welt];
   if (!def.eigen && !def.tages && !def.endlos) aktWelt = def.welt;
   zurueckZu = def.eigen ? 'sEditor' : def.tages || def.endlos ? 'sStart' : 'sLevels';
@@ -274,14 +274,14 @@ function starteDef(d, opt) {
   if (ghostFremd) meldung('👻 gegen ' + (ghost.name || 'Ghost') + ' · ' + zeitText(ghost.zeit), true);
 }
 function neustart() {
-  if (!def) return;
+  if (!def || olympia) return;
   lauf.neustart(); modus = 'spiel'; pausiert = false; abgerechnet = false; endeTimer = 0; zittern = 0;
   vorher = { x: lauf.b.x, y: lauf.b.y, th: lauf.b.th };
   aufnahme = []; naechsteProbe = 0;
   partikel.length = 0; zeige(null); hud(true);
 }
 function vomCheckpoint() {
-  if (!lauf || lauf.status !== 'abgestuerzt' || !lauf.snapshot) return;
+  if (olympia || !lauf || lauf.status !== 'abgestuerzt' || !lauf.snapshot) return;
   lauf.vomCheckpoint(); modus = 'spiel'; pausiert = false; endeTimer = 0;
   vorher = { x: lauf.b.x, y: lauf.b.y, th: lauf.b.th };
   zeige(null);
@@ -289,6 +289,7 @@ function vomCheckpoint() {
 function pausiere(an) {
   if (!lauf || lauf.status === 'ziel' || lauf.status === 'abgestuerzt') return;
   pausiert = an; modus = an ? 'pause' : 'spiel'; zeige(an ? 'sPause' : null);
+  if (an && olympia) olympAufgebenReset();
 }
 function zumMenue() {
   const ziel = zurueckZu;
@@ -381,6 +382,19 @@ function abrechnen() {
   $('zWeiter').style.display = i >= 0 && i + 1 < L.LEVELS.length ? '' : 'none';
   $('zMenue').textContent = def.eigen ? '🛠 Editor' : def.tages ? '☰ Menü' : '☰ Level';
   $('zGhost').style.display = eigenerGhostCode(def.key) ? '' : 'none';
+  konfetti($('sZiel').firstElementChild);
+}
+
+function konfetti(el) {
+  if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const alt = el.querySelector('.konfetti'); if (alt) alt.remove();
+  const k = document.createElement('div'); k.className = 'konfetti';
+  const farben = ['#ffc928', '#ff8a1f', '#3ecf6e', '#4ab3ff', '#ff5d5d'];
+  for (let i = 0; i < 24; i++) {
+    const e = document.createElement('i'); e.style.left = (Math.random() * 100) + '%'; e.style.background = farben[i % farben.length];
+    e.style.animationDelay = (Math.random() * 0.6).toFixed(2) + 's'; e.style.animationDuration = (1.8 + Math.random() * 1.2).toFixed(2) + 's'; k.appendChild(e);
+  }
+  el.prepend(k); setTimeout(() => k.remove(), 3800);
 }
 
 function ghostTeilen() {
@@ -445,7 +459,7 @@ function baueEditor() {
     knopf('◀', () => { if (ed.sel > 0) { const i = ed.sel; [ed.teile[i - 1], ed.teile[i]] = [ed.teile[i], ed.teile[i - 1]]; ed.sel--; geaendert(); } });
     knopf('▶', () => { const i = ed.sel; if (i < ed.teile.length - 1) { [ed.teile[i + 1], ed.teile[i]] = [ed.teile[i], ed.teile[i + 1]]; ed.sel++; geaendert(); } });
     knopf('Kopie', () => { if (ed.teile.length >= L.MAX_TEILE) return; ed.teile.splice(ed.sel + 1, 0, { k: t.k, s: t.s.slice() }); ed.sel++; geaendert(); });
-    knopf('✕ Weg', () => { ed.teile.splice(ed.sel, 1); ed.sel = Math.min(ed.sel, ed.teile.length - 1); geaendert(); }, '');
+    knopf('✕ Weg', () => { ed.teile.splice(ed.sel, 1); ed.sel = Math.min(ed.sel, ed.teile.length - 1); geaendert(); }, 'gefahr');
     werte.appendChild(r);
   } else werte.innerHTML = '<span class="hinweis">Wähl oben einen Baustein aus, um ihn einzustellen, zu verschieben oder zu löschen.</span>';
   const pal = $('ePalette'); pal.innerHTML = '';
@@ -471,7 +485,7 @@ function baueEigeneListe() {
     const k = (txt, f, art) => { const b = document.createElement('button'); b.className = 'knopf klein ' + (art || 'zweit'); b.textContent = txt; b.onclick = f; z.appendChild(b); };
     k('▶', () => starteDef(L.eigenesLevel(st)), 'gruen');
     k('✎', () => oeffneEditor(st));
-    k('✕', () => { if (confirm('„' + (e.name || 'Ohne Namen') + '“ löschen?')) { save.eigene.splice(i, 1); speichern(); baueEigeneListe(); } });
+    k('✕', () => { if (confirm('„' + (e.name || 'Ohne Namen') + '“ löschen?')) { save.eigene.splice(i, 1); speichern(); baueEigeneListe(); } }, 'gefahr');
     l.appendChild(z);
   });
 }
@@ -547,6 +561,7 @@ window.addEventListener('resize', () => editorZeichnen());
 
 // Codes im Link (#SL1… oder #SG1…)
 function linkCode() {
+  if (olympia) return;
   const h = decodeURIComponent(location.hash.slice(1));
   if (!/^S[LG]1/.test(h)) return;
   try { history.replaceState(null, '', location.pathname); } catch (e) { /* egal */ }
@@ -910,8 +925,10 @@ function zeichneGhost(lf) {
   zeichneMoto(ctx, { x: p.x, y: p.y, th: p.th, rad: [-a, -a] }, m, true, 0);
   ctx.globalAlpha = 1;
   ctx.save(); ctx.translate(p.x, p.y + 1.9); ctx.scale(1 / cam.s, -1 / cam.s);
-  ctx.font = 'bold 13px "Trebuchet MS",sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,.8)';
-  ctx.fillText('👻 ' + (ghost.name || 'Ghost'), 0, 0); ctx.restore();
+  ctx.font = '700 13px "Bricolage Grotesque","Trebuchet MS",sans-serif'; ctx.textAlign = 'center';
+  const gt = '👻 ' + (ghost.name || 'Ghost'), gw = ctx.measureText(gt).width + 16;
+  ctx.fillStyle = 'rgba(10,18,40,.62)'; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-gw / 2, -15, gw, 22, 11); else ctx.rect(-gw / 2, -15, gw, 22); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.fillText(gt, 0, 0); ctx.restore();
 }
 
 let letzteCamX = 0, zeitAnim = 0;
@@ -1031,12 +1048,13 @@ function vorwaerts(dt, zeit) {
     }
     partikelSchritt(dt);
     zeichne(acc * 60, dt);
-  } else if (modus === 'pause' && lauf) {
+  } else if ((modus === 'pause' || modus === 'zaehlt') && lauf) {
     zeichne(acc * 60, 0);
   }
   garageZeichnen(zeit);
 }
 function zeigeEnde() {
+  if (olympia) { modus = 'pause'; pausiert = true; return olympEnde(); }
   if (lauf.status === 'ziel') { abrechnen(); zeige('sZiel'); modus = 'pause'; pausiert = true; }
   else {
     abrechnen();
@@ -1047,6 +1065,104 @@ function zeigeEnde() {
     }
     zeige('sCrash'); modus = 'pause'; pausiert = true;
   }
+}
+
+// ---------------------------------------------------------------- Olympiade
+// Mit ?olymp=<Ticket> ist das Spiel eine Disziplin der Swimming-Lions-Olympiade: ein Versuch auf der Strecke, die aus der
+// Lauf-Kennung entsteht (für alle gleich), mit dem Flitzer. Der Server rechnet die Punkte aus den gemeldeten Rohwerten (wertung.js).
+const olympia = (() => {
+  let ticket = null;
+  try { ticket = new URLSearchParams(location.search).get('olymp'); if (ticket) sessionStorage.setItem('schanzenloewe-olymp', ticket); else ticket = sessionStorage.getItem('schanzenloewe-olymp'); } catch (e) { /* ohne Speicher */ }
+  if (!ticket) return null;
+  let info;
+  try { info = JSON.parse(decodeURIComponent(escape(atob(ticket.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; }
+  if (!info || typeof info.l !== 'string' || typeof info.s !== 'string') return null;
+  try { history.replaceState(null, '', location.pathname); } catch (e) { /* egal */ }
+  const c = info.c || {};
+  return { ticket, info, stufe: c.stufe === 0 || c.stufe === 2 ? c.stufe : 1, key: 'schanzenloewe-olymp-' + info.l + ':' + info.s };
+})();
+function olympMerke(wert) { try { if (wert === null) localStorage.removeItem(olympia.key); else localStorage.setItem(olympia.key, wert); } catch (e) { /* egal */ } }
+function olympStand() { try { return localStorage.getItem(olympia.key); } catch (e) { return null; } }
+function zurOlympiade() { try { sessionStorage.removeItem('schanzenloewe-olymp'); } catch (e) { /* egal */ } location.href = /^https?:\/\//.test(olympia.info.z || '') ? olympia.info.z : '/'; }
+function olympKarte(o) {
+  const i = olympia.info;
+  $('oKarte').dataset.art = o.art;
+  $('oKopf').textContent = '🏅 ' + (i.ti || 'Olympiade') + (i.nr ? ' · Disziplin ' + i.nr + (i.von ? '/' + i.von : '') : '');
+  $('oTitel').textContent = o.titel;
+  $('oText').innerHTML = o.text || '';
+  $('oWert').hidden = o.wert === undefined; $('oWert').textContent = o.wert === undefined ? '' : o.wert;
+  $('oListe').innerHTML = (o.zeilen || []).map(z => '<div class="ziel' + (z[2] ? ' ok' : '') + '"><span class="st">' + (z[2] ? '★' : '☆') + '</span>' + z[0] + '<span class="r">' + z[1] + '</span></div>').join('');
+  const st = $('oStart'); st.hidden = !o.knopf; if (o.knopf) { st.textContent = o.knopf; st.onclick = o.tun; st.className = 'knopf ' + (o.knopfArt || ''); }
+  $('oZurueck').onclick = zurOlympiade; $('oZurueck').hidden = !o.zurueck;
+  zeige('sOlymp');
+}
+function olympPost(inhalt) {
+  return fetch('/api/olymp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ ticket: olympia.ticket }, inhalt)) })
+    .then(r => r.json().then(d => ({ status: r.status, d })));
+}
+function olympIntro() {
+  const i = olympia.info, stand = olympStand();
+  if (stand === 'gestartet') return olympMelden({ ziel: false, weg: 0, zeit: 0, muenzen: 0, tricks: 0 }, 'Dein Versuch wurde unterbrochen (die Seite wurde neu geladen).');
+  if (stand === 'gespielt') return olympKarte({ art: 'ergebnis', titel: 'Schon gewertet', text: 'Du hast deinen Versuch schon gespielt. Die Wertung siehst du in der Olympiade.', zurueck: true });
+  if (stand && stand[0] === '{') { try { const g = JSON.parse(stand); return olympKarte({ art: 'ergebnis', titel: 'Schon gewertet', wert: g.punkte.toLocaleString('de-DE') + ' Punkte', text: 'Du hast deinen Versuch schon gespielt. Die Wertung siehst du in der Olympiade.<br>' + esc(g.text), zurueck: true }); } catch (e) { /* weiter */ } }
+  olympKarte({ art: 'intro', titel: 'Schanzenlöwe',
+    text: 'Hallo <b>' + esc(i.n || 'Spieler') + '</b>! Alle fahren dieselbe Strecke mit dem Flitzer. <b>Ein Versuch:</b> ein Sturz beendet die Fahrt, Neuladen auch. Punkte gibt es für Strecke, Ziel, Zeit, Münzen und Tricks.',
+    zeilen: [['Strecke', 'für alle gleich', true], ['Stufe', STUFEN[olympia.stufe], true]], knopf: '▶ Los geht’s', tun: olympStart, zurueck: true });
+}
+function olympStart() {
+  olympMerke('gestartet');
+  const d = L.olympLevel(olympia.info.l);
+  starteDef(d, { moto: L.MOTOS[0], schwer: olympia.stufe });
+  modus = 'zaehlt';
+  const z = $('zaehler'); z.classList.add('an');
+  const schritte = ['3', '2', '1', 'LOS!'];
+  schritte.forEach((t, k) => setTimeout(() => {
+    z.innerHTML = '<span>' + t + '</span>';
+    if (k === schritte.length - 1) { modus = 'spiel'; setTimeout(() => { z.classList.remove('an'); z.innerHTML = ''; }, 800); }
+  }, k * 900));
+}
+async function olympMelden(werte, vorText) {
+  olympKarte({ art: 'ergebnis', titel: werte.ziel ? 'Geschafft!' : 'Fahrt beendet', text: (vorText ? vorText + '<br>' : '') + 'Wird gewertet …', zeilen: olympZeilen(werte) });
+  for (let versuch = 0; versuch < 4; versuch++) {
+    try {
+      const r = await olympPost({ art: 'ergebnis', werte });
+      const d = r.d;
+      if (d.punkte !== undefined && (r.status === 200 || r.status === 409)) {
+        if (r.status === 200) olympMerke(JSON.stringify({ punkte: d.punkte, text: d.text }));
+        olympKarte({ art: 'ergebnis', titel: werte.ziel ? 'Geschafft!' : 'Fahrt beendet', wert: d.punkte.toLocaleString('de-DE') + ' Punkte',
+          text: (vorText ? vorText + '<br>' : '') + (r.status === 200 ? 'Eingetragen. Zurück zur Olympiade, dort siehst du die Wertung.' : 'Dein Versuch war schon gewertet.'), zeilen: olympZeilen(werte), zurueck: true });
+        if (werte.ziel) konfetti($('oKarte'));
+        return;
+      }
+      if (r.status === 403 || r.status === 400) return olympKarte({ art: 'fehler', titel: 'Nicht gewertet', text: esc(d.fehler || 'Die Meldung wurde abgelehnt.'), zurueck: true });
+    } catch (e) { /* nochmal */ }
+    await new Promise(ok => setTimeout(ok, 2000 * (versuch + 1)));
+  }
+  olympKarte({ art: 'fehler', titel: 'Keine Verbindung', text: 'Dein Ergebnis konnte nicht gemeldet werden. Versuch es noch einmal oder sag der Leitung Bescheid.', zeilen: olympZeilen(werte), knopf: '↻ Nochmal melden', tun: () => olympMelden(werte, vorText), zurueck: true });
+}
+function olympZeilen(w) {
+  return [[w.ziel ? 'Ziel erreicht' : 'Strecke', w.ziel ? zeitText(w.zeit) : Math.round(w.weg) + ' m', !!w.ziel], ['Münzen', w.muenzen, w.muenzen > 0], ['Trickpunkte', w.tricks, w.tricks > 0]];
+}
+let aufgeben = false;
+function olympAufgebenReset() { aufgeben = false; $('pMenue').textContent = '🏳 Aufgeben'; $('pMenue').classList.remove('gefahr'); $('pMenue').classList.add('zweit'); }
+function olympEnde() {
+  const w = { ziel: lauf.status === 'ziel', weg: lauf.distanz, zeit: lauf.zeit, muenzen: lauf.muenzenZahl, tricks: lauf.punkte };
+  hud(false);
+  olympMelden(w);
+}
+if (olympia) {
+  document.body.classList.add('olymp');
+  $('pNeu').style.display = 'none';
+  olympAufgebenReset();
+  $('pMenue').onclick = () => {
+    if (!aufgeben) { aufgeben = true; $('pMenue').textContent = 'Wirklich aufgeben?'; $('pMenue').classList.add('gefahr'); $('pMenue').classList.remove('zweit'); return; }
+    olympEnde();
+  };
+  $('bTages').onclick = null;
+  fetch('/api/olymp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket: olympia.ticket, art: 'da' }) })
+    .then(r => r.json()).then(d => { if (d && d.schonGespielt && !olympStand() && modus === 'menue') { olympMerke('gespielt'); olympIntro(); } }).catch(() => {});
+  neueDemo(); modus = 'menue';
+  olympIntro();
 }
 
 aktualisiereMuenzen();

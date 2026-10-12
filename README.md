@@ -16,13 +16,14 @@
 
 ```
 node server.js          # http://localhost:11000
-npm test                # Logik-Tests (inkl. Fahrbarkeit aller Level)
+npm test                # Logik-Tests (inkl. Fahrbarkeit aller Level) und Olympiade-Tests
 node test/varianten.js  # Autopilot-Fahrbarkeitstabelle, optional --cp
 node test/fahrt.js alle flitzer [--flip] [--cp] [--steil]
 ```
 
 - `js/logik.js`: Physik, Gelände-Baukasten (inkl. Looping/Plattform/Seilbrücke), Level, Autopilot, Kombos, Editor-Bausteine, Tagesstrecke, Ghost- und Strecken-Codes (UMD, ohne Browser)
-- `js/spiel.js`: Zeichnen, Eingabe, Menüs, Speicherstand
+- `js/spiel.js`: Zeichnen, Eingabe, Menüs, Speicherstand, Olympia-Modus
+- `wertung.js`: Punkterechnung der Olympiade (Server), `olymp.js`: Ticket-Prüfung und Meldung (Vorlage aus `olympiade/geteilt/`)
 - Debug im Browser: `schanzenloewe.start('1-3')`, `.sim(sek)`, `.tick(n)`, `.halt(true)`, `.bild(n)`, `.editor()`, `.code('SL1…')`
 
 ### Codes
@@ -30,6 +31,15 @@ node test/fahrt.js alle flitzer [--flip] [--cp] [--steil]
 - Strecke: `SL1` + Welt (0–4) + je Baustein ein Buchstabe und pro Wert eine Base-36-Stufe, optional `~` + Name (Base64url). Beispiel: `SL10H22S33CO2W12S54`
 - Ghost: `SG1` + Base64url der Bytes (Strecken-Schlüssel `l:4-1` / `t:JJJJMMTT` / `c:<Strecken-Code>`, Motorrad, Zeit, Name, Positionen mit 5 Hz als Differenzen). Ghosts zeichnen Positionen auf statt Eingaben, damit sie in jedem Browser gleich ablaufen.
 - Beides funktioniert auch als Link: `https://…/#SL1…`
+
+## Olympiade
+
+Disziplin der Swimming-Lions-Olympiade (Schlüssel `schanzen`, Spielkennung `schanzenloewe`, Wertung `wert`). Mit dem Ticket-Link (`?olymp=…`) fährt jeder **einmal** dieselbe Strecke: sie entsteht wie die Tagesstrecke aus einem Startwert, hier aus der Lauf-Kennung des Tickets (`Logik.olympLevel`), gefahren wird mit dem Flitzer in der Stufe aus den Einstellungen (Standard Normal). Im Olympia-Modus gibt es kein Menü, keinen Shop, keinen Editor, keinen Neustart und keine Checkpoints; ein Sturz, Aufgeben oder Neuladen beendet den Versuch.
+
+- Ablauf im Browser: Willkommenskarte mit Namen aus dem Ticket, Countdown 3-2-1, Fahrt, Ergebnisbildschirm mit Punkten und „Zurück zur Olympiade“.
+- Der Browser meldet nur rohe Werte (`ziel`, `weg`, `zeit`, `muenzen`, `tricks`) an `POST /api/olymp`; **der Server rechnet die Punkte** (`wertung.js`): 3 Punkte je Streckenmeter, bei Ziel 2000 plus Zeitbonus (40 je Sekunde unter Länge/8 s), 10 je Münze, 1 je 5 Trickpunkte. Der Server baut die Strecke selbst nach und begrenzt Weg (Streckenlänge), Zeit (Tempolimit 40 m/s), Münzen (nur bis zum erreichten Punkt) und Tricks (nach Zeit).
+- Pro Ticket zählt nur die erste Meldung (danach 409). Ohne gültiges Ticket (falsche Signatur, abgelaufen, anderes Spiel) gibt es 403 und keine Meldung. Die Wertung geht signiert an die Olympiade (`olymp.wertMelden`).
+- Ohne `?olymp=` läuft das Spiel genau wie sonst. Die Olympia-Tests stehen in `test/olymp.test.js` (Punkte, Tickets, Server mit nachgebauter Gegenstelle).
 
 ## Hosting
 
