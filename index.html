@@ -421,5 +421,16 @@ body.olymp #kombo{top:calc(96px + var(--safe-t))}
   if (document.body) bauen(); else document.addEventListener('DOMContentLoaded', bauen);
 })();
 </script>
+
+<!-- Rangliste der Spielesammlung: meldet Spielzeit, Punkte und Progress -->
+<script>
+window.SLRangAdapter=function(){
+  var s={};try{s=JSON.parse(localStorage.getItem('schanzenloewe.v1'))||{}}catch(e){}
+  var p=0;Object.keys(s.punkte||{}).forEach(function(k){p+=+s.punkte[k]||0});
+  var st=s.sterne||{},n=Object.keys(st).filter(function(k){return (st[k]||[]).some(Boolean)}).length;
+  return{punkte:p+(+s.endlos||0),progress:Math.min(100,n/20*100)}
+};
+</script>
+<script src="https://rangliste-aoee.onrender.com/melder.js" data-spiel="Schanzenlöwe" defer></script>
 </body>
 </html>
